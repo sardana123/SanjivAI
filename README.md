@@ -12,14 +12,12 @@ Python standard library only. Runs on a laptop, a Raspberry Pi or a cheap VPS.
 ![status](https://img.shields.io/badge/tests-36%20passing-brightgreen) ![python](https://img.shields.io/badge/python-3.10%2B-blue) ![deps](https://img.shields.io/badge/dependencies-0-success) ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ## Screenshots
-
-| Reminder & big buttons | Voice confirmation | Double-dose guard |
-|---|---|---|
-| ![reminder](docs/screenshots/01-patient-reminder.png) | ![confirm](docs/screenshots/02-voice-confirmation.png) | ![guard](docs/screenshots/03-double-dose-guard.png) |
-
-| Hindi voice | Emergency handling | Caregiver dashboard |
-|---|---|---|
-| ![hindi](docs/screenshots/04-hindi-voice.png) | ![emergency](docs/screenshots/05-emergency.png) | ![dashboard](docs/screenshots/06-caregiver-dashboard.png) |
+![reminder](docs/01-patient-reminder.png)
+![confirm](docs/02-voice-confirmation.png)
+![guard](docs/03-double-dose-guard.png)
+![hindi](docs/04-hindi-voice.png)
+![emergency](docs/05-emergency.png)
+![dashboard](docs/06-caregiver-dashboard.png)
 
 ## Why it is different
 
