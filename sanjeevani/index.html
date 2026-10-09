@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sanjeevani - Voice Medication Companion</title>
+<style>
+:root{--bg:#f4f7f6;--card:#fff;--ink:#14302b;--mute:#5b7872;--brand:#0f8a73;--brand-d:#0b6b59;--warn:#d9822b;--bad:#c2410c;--ok:#15803d;--line:#dde7e4;--r:18px}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1917;--card:#16251f;--ink:#e6f2ef;--mute:#8fb0a8;--line:#24382f;--brand:#2bb89b;--brand-d:#20917a}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 18px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{font-size:20px;margin:0;flex:1;display:flex;align-items:center;gap:8px}h1 small{color:var(--mute);font-weight:400;font-size:13px}
+select,input,button,textarea{font:inherit;color:inherit}
+select,input{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.tabs{display:flex;gap:6px}.tab{padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;cursor:pointer}
+.tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+main{max-width:980px;margin:0 auto;padding:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+h2{font-size:17px;margin:0 0 10px}.mute{color:var(--mute)}
+.btn{padding:12px 18px;border-radius:14px;border:0;background:var(--brand);color:#fff;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--brand-d)}.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.big{font-size:20px;padding:18px 26px;border-radius:18px}.btn.warn{background:var(--warn)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.now{border:2px solid var(--brand)}.now .title{font-size:26px;font-weight:700}
+.mic{width:120px;height:120px;border-radius:50%;font-size:46px;border:0;background:var(--brand);color:#fff;cursor:pointer;box-shadow:0 8px 30px #0f8a7355}
+.mic.live{background:var(--bad);animation:pulse 1.2s infinite}@keyframes pulse{50%{box-shadow:0 0 0 18px #c2410c22}}
+.center{text-align:center}.bubble{margin-top:14px;padding:14px;border-radius:14px;background:var(--bg);min-height:56px;font-size:18px}
+.dose{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.dose:last-child{border:0}
+.pill{padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600}
+.s-taken{background:#dcfce7;color:#166534}.s-missed,.s-skipped{background:#fee2e2;color:#991b1b}.s-pending{background:#e0f2fe;color:#075985}.s-due{background:#fef3c7;color:#92400e}
+.ring{width:130px;height:130px}.ring text{font-weight:700}
+.bars{display:flex;align-items:flex-end;gap:5px;height:110px}.bar{flex:1;border-radius:5px 5px 0 0;background:var(--brand);min-height:3px;position:relative}
+.bar.low{background:var(--warn)}.bar.bad{background:var(--bad)}.bar.none{background:var(--line)}
+.alert{padding:10px 12px;border-radius:12px;border-left:5px solid var(--warn);background:var(--bg);margin-bottom:8px}.alert.emergency{border-color:var(--bad)}
+.alert.ack{opacity:.5}label{display:block;font-size:13px;color:var(--mute);margin:8px 0 3px}.hidden{display:none!important}
+.field{width:100%}.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:12px;opacity:0;transition:.3s;z-index:9}.toast.on{opacity:1}
+.big-text{font-size:20px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌿 Sanjeevani <small>voice medication companion</small></h1>
+  <select id="patient" aria-label="Patient"></select>
+  <select id="lang" aria-label="Language"><option value="en">English</option><option value="hi">हिन्दी</option></select>
+  <div class="tabs"><button class="tab on" data-tab="patient">Patient</button><button class="tab" data-tab="caregiver">Caregiver</button></div>
+</header>
+<main>
+<section id="view-patient">
+  <div class="card now" id="nowCard"></div>
+  <div class="card center">
+    <button class="mic" id="mic" aria-label="Talk to Sanjeevani">🎤</button>
+    <p class="mute" id="micHint">Tap and say: “I took my medicine”, “what's next”, “remind me later”</p>
+    <div class="bubble" id="bubble" aria-live="polite"></div>
+    <div class="row" style="justify-content:center;margin-top:12px">
+      <input id="typed" class="field" style="max-width:360px" placeholder="…or type here" aria-label="Type a message">
+      <button class="btn ghost" id="send">Send</button>
+      <label class="row" style="margin:0"><input type="checkbox" id="voiceOn"> Speak reminders aloud</label>
+    </div>
+  </div>
+  <div class="card"><h2>Today's medicines</h2><div id="doses"></div></div>
+</section>
+
+<section id="view-caregiver" class="hidden">
+  <div class="grid">
+    <div class="card center"><h2>Adherence (14 days)</h2><svg class="ring" viewBox="0 0 120 120" id="ring"></svg>
+      <div id="streak" class="mute"></div></div>
+    <div class="card"><h2>Daily doses taken</h2><div class="bars" id="bars"></div><div class="mute" style="margin-top:8px;font-size:13px">Green = all taken · Orange = some missed · Red = mostly missed</div></div>
+  </div>
+  <div class="card"><h2>What this means</h2><div id="summary" class="big-text"></div></div>
+  <div class="grid">
+    <div class="card"><h2>Alerts</h2><div id="alerts"></div></div>
+    <div class="card"><h2>Medicines</h2><div id="meds"></div>
+      <h2 style="margin-top:16px">Add medicine</h2>
+      <label>Name</label><input id="mName" class="field" maxlength="80">
+      <div class="row"><div style="flex:1"><label>Dose</label><input id="mDose" class="field" placeholder="500 mg"></div>
+      <div style="flex:1"><label>Times (24h, comma-separated)</label><input id="mTimes" class="field" placeholder="08:00, 20:00"></div></div>
+      <label>Instructions</label><input id="mInstr" class="field" placeholder="take after food">
+      <p><button class="btn" id="addMed">Add medicine</button></p></div>
+  </div>
+  <div class="card"><h2>Patient &amp; caregiver</h2>
+    <div class="grid"><div><label>New patient name</label><input id="pName" class="field"></div>
+    <div><label>Caregiver name</label><input id="pCg" class="field"></div>
+    <div><label>Caregiver phone / contact</label><input id="pCt" class="field"></div></div>
+    <p class="row"><button class="btn" id="addPatient">Create patient</button><button class="btn ghost" id="saveCg">Update current patient's caregiver</button></p></div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const state={pid:null,spoke:{},lastSpoken:0};
+let token=localStorage.getItem('sj_token')||'';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,opts={}){
+  const r=await fetch(path,{...opts,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:opts.body?JSON.stringify(opts.body):undefined});
+  if(r.status===401){token=prompt('Access token:')||'';localStorage.setItem('sj_token',token);return api(path,opts)}
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok&&r.status!==409)throw new Error(data.error||r.statusText);
+  return data;
+}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2600)}
+const L=()=>$('#lang').value;
+const T={en:{none:'No medicines due right now',now:'Time for',took:'I took it ✓',later:'Later',skip:'Skip',next:'Next',noMeds:'No medicines scheduled today.',speakInit:'Hello! How can I help?',listening:'Listening…',nosupport:'Voice input is not supported in this browser. Please type instead.'},
+ hi:{none:'अभी कोई दवा का समय नहीं',now:'दवा का समय:',took:'मैंने ले ली ✓',later:'बाद में',skip:'छोड़ें',next:'अगली',noMeds:'आज कोई दवा निर्धारित नहीं है।',speakInit:'नमस्ते! मैं कैसे मदद करूं?',listening:'सुन रहा हूं…',nosupport:'इस ब्राउज़र में आवाज़ समर्थित नहीं है। कृपया टाइप करें।'}};
+const tt=k=>T[L()][k];
+
+/* ---------- speech ---------- */
+function speak(text){
+  if(!('speechSynthesis' in window)||!text)return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang=L()==='hi'?'hi-IN':'en-IN';u.rate=.92;speechSynthesis.speak(u);
+}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,listening=false;
+function toggleMic(){
+  if(!SR){toast(tt('nosupport'));$('#typed').focus();return}
+  if(listening){rec&&rec.stop();return}
+  rec=new SR();rec.lang=L()==='hi'?'hi-IN':'en-IN';rec.interimResults=false;rec.maxAlternatives=1;
+  rec.onstart=()=>{listening=true;$('#mic').classList.add('live');$('#bubble').textContent=tt('listening')};
+  rec.onend=()=>{listening=false;$('#mic').classList.remove('live')};
+  rec.onerror=e=>{toast('Mic: '+e.error)};
+  rec.onresult=e=>talk(e.results[0][0].transcript);
+  rec.start();
+}
+async function talk(text){
+  if(!text.trim()||!state.pid)return;
+  $('#bubble').innerHTML='<span class="mute">“'+esc(text)+'”</span><br>…';
+  try{
+    const r=await api(`/api/patients/${state.pid}/talk`,{method:'POST',body:{text,lang:L()}});
+    $('#bubble').innerHTML='<span class="mute">“'+esc(text)+'”</span><br><b>'+esc(r.reply)+'</b>';
+    speak(r.reply);await refresh();
+  }catch(e){$('#bubble').textContent=e.message}
+}
+
+/* ---------- patient view ---------- */
+async function renderPatient(){
+  const d=await api(`/api/patients/${state.pid}/today`);
+  const due=d.doses.filter(x=>x.due);
+  const card=$('#nowCard');
+  if(due.length){
+    card.innerHTML=`<div class="mute">${tt('now')}</div><div class="title">${due.map(x=>esc(x.med_name+' '+x.dose)).join(' + ')}</div>
+      <div class="mute">${esc(due[0].instructions||'')}</div>
+      <div class="row" style="margin-top:14px"><button class="btn big" id="bTake">${tt('took')}</button><button class="btn ghost" id="bLater">${tt('later')}</button><button class="btn ghost" id="bSkip">${tt('skip')}</button></div>`;
+    $('#bTake').onclick=()=>actAll(due,'take');$('#bLater').onclick=()=>actAll(due,'snooze');$('#bSkip').onclick=()=>actAll(due,'skip');
+    maybeSpeakReminder(d);
+  }else{
+    const n=d.next;
+    card.innerHTML=`<div class="title">✅ ${tt('none')}</div>`+(n?`<div class="mute">${tt('next')}: ${esc(n.med_name+' '+n.dose)} · ${esc(n.time_label)}</div>`:'');
+  }
+  $('#doses').innerHTML=d.doses.length?d.doses.map(x=>{
+    const cls=x.status==='pending'?(x.due?'due':'pending'):x.status;
+    return `<div class="dose"><div><b>${esc(x.med_name)}</b> <span class="mute">${esc(x.dose)}</span><div class="mute" style="font-size:13px">${esc(x.time_label)}</div></div><span class="pill s-${cls}">${esc(cls)}</span></div>`}).join(''):`<span class="mute">${tt('noMeds')}</span>`;
+}
+async function actAll(list,kind){
+  for(const x of list){
+    const body=kind==='snooze'?{minutes:15}:{};
+    const r=await api(`/api/doses/${x.id}/${kind}`,{method:'POST',body});
+    if(r.ok===false&&r.reason==='too_soon'){const m=L()==='hi'?'आपने यह दवा अभी ली है। कृपया रुकिए।':'You already took this recently. Please wait.';toast(m);speak(m)}
+  }
+  await refresh();
+}
+function maybeSpeakReminder(d){
+  if(!$('#voiceOn').checked||!d.reminder)return;
+  const key=d.doses.filter(x=>x.due).map(x=>x.id).join(',');
+  const now=Date.now();
+  if(state.spoke[key]&&now-state.spoke[key]<5*60*1000)return;
+  state.spoke[key]=now;speak(d.reminder);
+}
+
+/* ---------- caregiver view ---------- */
+async function renderCaregiver(){
+  const [ins,alerts,meds]=await Promise.all([api(`/api/patients/${state.pid}/insights?days=14`),api(`/api/patients/${state.pid}/alerts`),api(`/api/patients/${state.pid}/medications`)]);
+  const pct=ins.overall_rate==null?null:Math.round(ins.overall_rate*100);
+  const col=pct==null?'#9ca3af':pct>=85?'#15803d':pct>=70?'#d9822b':'#c2410c';
+  const circ=2*Math.PI*48,off=circ*(1-(pct||0)/100);
+  $('#ring').innerHTML=`<circle cx="60" cy="60" r="48" fill="none" stroke="#9ca3af33" stroke-width="12"/><circle cx="60" cy="60" r="48" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${off}" transform="rotate(-90 60 60)"/><text x="60" y="68" text-anchor="middle" font-size="26" fill="currentColor">${pct==null?'–':pct+'%'}</text>`;
+  $('#streak').textContent=ins.streak_days?`🔥 ${ins.streak_days}-day perfect streak`:'';
+  $('#bars').innerHTML=ins.daily.map(d=>{
+    const tot=d.taken+d.missed+d.skipped;
+    const h=d.rate==null?3:Math.max(6,Math.round(d.rate*100));
+    const cls=d.rate==null?'none':d.rate>=.85?'':d.rate>=.5?'low':'bad';
+    return `<div class="bar ${cls}" style="height:${h}%" title="${esc(d.date)}: ${d.taken}/${tot} taken"></div>`}).join('');
+  $('#summary').textContent=ins.summary;
+  $('#alerts').innerHTML=alerts.length?alerts.map(a=>`<div class="alert ${esc(a.kind)} ${a.acknowledged?'ack':''}"><b>${esc(a.kind.replace('_',' '))}</b> · <span class="mute">${esc(a.created_at.replace('T',' '))}</span><br>${esc(a.message)}${a.acknowledged?'':` <button class="btn ghost" style="padding:4px 10px" data-ack="${a.id}">Acknowledge</button>`}</div>`).join(''):'<span class="mute">No alerts. 🎉</span>';
+  document.querySelectorAll('[data-ack]').forEach(b=>b.onclick=async()=>{await api(`/api/alerts/${b.dataset.ack}/ack`,{method:'POST',body:{}});renderCaregiver()});
+  $('#meds').innerHTML=meds.map(m=>`<div class="dose"><div><b>${esc(m.name)}</b> <span class="mute">${esc(m.dose)}</span><div class="mute" style="font-size:13px">${esc(m.times.join(', '))} ${m.instructions?'· '+esc(m.instructions):''}</div></div><button class="btn ghost" style="padding:4px 10px" data-del="${m.id}">Remove</button></div>`).join('')||'<span class="mute">None yet.</span>';
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(confirm('Remove this medicine?')){await api(`/api/medications/${b.dataset.del}`,{method:'DELETE'});renderCaregiver()}});
+}
+
+/* ---------- wiring ---------- */
+async function loadPatients(keep){
+  const ps=await api('/api/patients');
+  $('#patient').innerHTML=ps.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if(!ps.length){state.pid=null;showTab('caregiver');return}
+  state.pid=keep&&ps.find(p=>p.id==keep)?keep:ps[0].id;$('#patient').value=state.pid;
+  $('#lang').value=ps.find(p=>p.id==state.pid).language;
+  await refresh();
+}
+let tab='patient';
+function showTab(t){tab=t;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $('#view-patient').classList.toggle('hidden',t!=='patient');$('#view-caregiver').classList.toggle('hidden',t!=='caregiver');refresh()}
+async function refresh(){if(!state.pid)return;try{await(tab==='patient'?renderPatient():renderCaregiver())}catch(e){toast(e.message)}}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+$('#patient').onchange=e=>{state.pid=+e.target.value;loadPatients(state.pid)};
+$('#lang').onchange=async()=>{if(state.pid)await api(`/api/patients/${state.pid}`,{method:'PUT',body:{language:L()}});refresh()};
+$('#mic').onclick=toggleMic;
+$('#send').onclick=()=>{const v=$('#typed').value;$('#typed').value='';talk(v)};
+$('#typed').onkeydown=e=>{if(e.key==='Enter')$('#send').click()};
+$('#voiceOn').onchange=e=>{if(e.target.checked)speak(tt('speakInit'))};
+$('#addMed').onclick=async()=>{
+  try{await api(`/api/patients/${state.pid}/medications`,{method:'POST',body:{name:$('#mName').value,dose:$('#mDose').value,instructions:$('#mInstr').value,times:$('#mTimes').value.split(',').map(s=>s.trim()).filter(Boolean)}});
+    ['#mName','#mDose','#mInstr','#mTimes'].forEach(s=>$(s).value='');toast('Medicine added');renderCaregiver()}catch(e){toast(e.message)}};
+$('#addPatient').onclick=async()=>{
+  try{const p=await api('/api/patients',{method:'POST',body:{name:$('#pName').value,caregiver_name:$('#pCg').value,caregiver_contact:$('#pCt').value,language:L()}});
+    toast('Patient created');await loadPatients(p.id)}catch(e){toast(e.message)}};
+$('#saveCg').onclick=async()=>{
+  try{await api(`/api/patients/${state.pid}`,{method:'PUT',body:{caregiver_name:$('#pCg').value,caregiver_contact:$('#pCt').value}});toast('Saved')}catch(e){toast(e.message)}};
+loadPatients();setInterval(refresh,20000);
+</script>
+</body>
+</html>
